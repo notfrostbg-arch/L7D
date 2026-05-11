@@ -308,6 +308,116 @@
       transform: scale(0.98);
     }
 
+    /* File Upload */
+    .file-button {
+      background-color: var(--bg-primary);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .file-button:hover {
+      background-color: var(--bg-tertiary);
+      color: var(--text-primary);
+      border-color: var(--accent);
+    }
+
+    .file-button svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    /* File Message */
+    .message-file {
+      background-color: var(--bg-tertiary);
+      padding: 12px 14px;
+      border-radius: 12px;
+      border-top-left-radius: 4px;
+      max-width: 300px;
+    }
+
+    .message.own .message-file {
+      background-color: var(--accent);
+      border-top-left-radius: 12px;
+      border-top-right-radius: 4px;
+    }
+
+    .message-file img {
+      max-width: 100%;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .message-file img:hover {
+      opacity: 0.9;
+    }
+
+    .file-attachment {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .file-icon {
+      width: 40px;
+      height: 40px;
+      background-color: var(--bg-primary);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .message.own .file-icon {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .file-icon svg {
+      width: 20px;
+      height: 20px;
+      color: var(--accent);
+    }
+
+    .message.own .file-icon svg {
+      color: white;
+    }
+
+    .file-info {
+      overflow: hidden;
+    }
+
+    .file-name {
+      font-size: 0.875rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-size {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .message.own .file-size {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
     /* Name Modal */
     .modal-overlay {
       position: fixed;
@@ -452,6 +562,12 @@
 
         <div class="input-area">
           <form class="input-form" id="messageForm">
+            <input type="file" class="file-input" id="fileInput" accept="image/*,.pdf,.doc,.docx,.txt,.zip,.rar" disabled>
+            <button type="button" class="file-button" id="fileButton" title="Attach file" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+            </button>
             <input type="text" class="message-input" id="messageInput" placeholder="Type a message..." autocomplete="off" disabled>
             <button type="submit" class="send-button" disabled>Send</button>
           </form>
@@ -488,6 +604,8 @@
     const messagesContainer = document.getElementById('messagesContainer');
     const userList = document.getElementById('userList');
     const onlineCount = document.getElementById('onlineCount');
+    const fileInput = document.getElementById('fileInput');
+    const fileButton = document.getElementById('fileButton');
 
     // Generate random color
     function getRandomColor() {
@@ -555,6 +673,52 @@
       return div.innerHTML;
     }
 
+    // Format file size
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    // Add file message to chat
+    function addFileMessage(data) {
+      const isOwn = data.userId === userId;
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message${isOwn ? ' own' : ''}`;
+      
+      let fileContent = '';
+      if (data.fileType.startsWith('image/')) {
+        fileContent = `<img src="${data.fileData}" alt="${escapeHtml(data.fileName)}" onclick="window.open(this.src, '_blank')">`;
+      } else {
+        fileContent = `
+          <a href="${data.fileData}" download="${escapeHtml(data.fileName)}" class="file-attachment">
+            <div class="file-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div class="file-info">
+              <div class="file-name">${escapeHtml(data.fileName)}</div>
+              <div class="file-size">${formatFileSize(data.fileSize)}</div>
+            </div>
+          </a>
+        `;
+      }
+      
+      messageDiv.innerHTML = `
+        <div class="message-avatar" style="background-color: ${data.color}">${getInitials(data.userName)}</div>
+        <div class="message-content">
+          <div class="message-header">
+            <span class="message-author">${data.userName}</span>
+            <span class="message-time">${formatTime(data.timestamp)}</span>
+          </div>
+          <div class="message-file">${fileContent}</div>
+        </div>
+      `;
+      messagesContainer.appendChild(messageDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
     // Join chat
     function joinChat(name) {
       userName = name.trim();
@@ -568,6 +732,8 @@
       nameModal.classList.add('hidden');
       messageInput.disabled = false;
       sendButton.disabled = false;
+      fileInput.disabled = false;
+      fileButton.disabled = false;
       messageInput.focus();
 
       // Broadcast join
@@ -609,6 +775,10 @@
 
         case 'message':
           addMessage(data);
+          break;
+
+        case 'file':
+          addFileMessage(data);
           break;
 
         case 'request-users':
@@ -680,6 +850,47 @@
 
         // Clear input
         messageInput.value = '';
+      }
+    });
+
+    // Handle file button click
+    fileButton.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    // Handle file selection
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        // Limit file size to 5MB for BroadcastChannel
+        if (file.size > 5 * 1024 * 1024) {
+          alert('File size must be less than 5MB');
+          fileInput.value = '';
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const fileData = {
+            type: 'file',
+            userId,
+            userName,
+            color: userColor,
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+            fileData: event.target.result,
+            timestamp: Date.now()
+          };
+
+          // Add to own chat
+          addFileMessage(fileData);
+
+          // Broadcast to others
+          channel.postMessage(fileData);
+        };
+        reader.readAsDataURL(file);
+        fileInput.value = '';
       }
     });
 
